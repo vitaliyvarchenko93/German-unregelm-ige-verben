@@ -282,60 +282,70 @@ function show(id){
 }
 
 function backToMenu() {
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (currentAudioInstance) {
+        currentAudioInstance.pause();
+        currentAudioInstance = null;
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
     show("menu");
 }
 
-/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (ИЗ LEKTIONEN TRAINER A1) ===== */
-let selectedVoice = null;
+/* ===== СИСТЕМА ОЗВУЧКИ GOOGLE TTS + FALLBACK ===== */
+let currentAudioInstance = null;
 
-function initGermanVoice() {
+function fallbackToSpeechSynthesis(text) {
     if (!('speechSynthesis' in window)) return;
-    const voices = window.speechSynthesis.getVoices();
-    const germanVoices = voices.filter(v => v.lang.startsWith('de'));
-    
-    if (germanVoices.length > 0) {
-        selectedVoice = germanVoices.find(v => 
-            v.name.includes('Google') || 
-            v.name.includes('Natural') || 
-            v.name.includes('Premium') ||
-            v.name.includes('Online') ||
-            v.name.includes('Katja') ||
-            v.name.includes('Conrad') ||
-            v.name.includes('Marlene') ||
-            v.name.includes('Siri') ||
-            v.name.includes('Clara') ||
-            v.name.includes('Viktor')
-        ) || germanVoices[0];
-    }
+
+    setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'de-DE';
+        utterance.rate = 0.85;
+
+        const voices = window.speechSynthesis.getVoices();
+        const naturalVoice = voices.find(v => 
+            v.lang.startsWith('de') && 
+            (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Siri') || v.name.includes('Clara') || v.name.includes('Viktor'))
+        );
+
+        if (naturalVoice) {
+            utterance.voice = naturalVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    }, 50);
 }
 
-if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = initGermanVoice;
-    initGermanVoice();
-}
+function playCurrentAudio(v1, v2, v3) {
+    let textToSpeak = `${v1}, ${v2}, ${v3}`.replace(/[∙.]/g, '').replace(/\//g, ','); 
 
-function speakGermanText(text) {
-    if (!('speechSynthesis' in window) || !text) return;
-
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/\//g, ', ');
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'de-DE';
-
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
+    if (currentAudioInstance) {
+        currentAudioInstance.pause();
+        currentAudioInstance = null;
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
     }
 
-    utterance.rate = 0.88;
-    utterance.pitch = 1.0;
+    const encodedText = encodeURIComponent(textToSpeak);
+    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=de&client=tw-ob&q=${encodedText}`;
 
-    window.speechSynthesis.speak(utterance);
+    const audio = new Audio(audioUrl);
+    currentAudioInstance = audio;
+
+    const playPromise = audio.play();
+
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.warn("Google TTS недоступен или заблокирован, переключаемся на системную озвучку:", error);
+            fallbackToSpeechSynthesis(textToSpeak);
+        });
+    }
 }
 
 function triggerVoice(v1, v2, v3) {
-    speakGermanText(`${v1}, ${v2}, ${v3}`);
+    playCurrentAudio(v1, v2, v3);
 }
 
 /* ===== РЕЖИМ: ИЗУЧЕНИЕ ===== */
