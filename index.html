@@ -241,16 +241,13 @@ const translations = {
 function loadDatabaseAndConfirm(lang) {
     currentLang = lang;
     
-    // Удаляем предыдущий скрипт, если он был подключен, чтобы не дублировать память
     const oldScript = document.getElementById("verbsDbScript");
     if (oldScript) oldScript.remove();
 
-    // Создаем элемент скрипта для загрузки нужного файла
     const script = document.createElement("script");
     script.id = "verbsDbScript";
-    script.src = `verbs_${lang}.js`; // Сюда подставится verbs_rus.js или verbs_ukr.js
+    script.src = `verbs_${lang}.js`;
     
-    // Переходим в меню сразу после успешного импорта базы
     script.onload = function() {
         updateInterfaceTexts();
         show("menu");
@@ -282,67 +279,60 @@ function show(id){
 }
 
 function backToMenu() {
-    if (currentAudioInstance) {
-        currentAudioInstance.pause();
-        currentAudioInstance = null;
-    }
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
     }
     show("menu");
 }
 
-/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (GOOGLE TTS + FALLBACK) ===== */
-let currentAudioInstance = null;
+/* ===== СИСТЕМА ОЗВУЧКИLEKTIONEN TRAINER A1 (WEB SPEECH API) ===== */
+let selectedVoice = null;
 
-function fallbackToSpeechSynthesis(text) {
+function initGermanVoice() {
     if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    const germanVoices = voices.filter(v => v.lang.startsWith('de'));
+    
+    if (germanVoices.length > 0) {
+        // Фильтруем голоса точно так же, как в Lektionen Trainer A1
+        selectedVoice = germanVoices.find(v => 
+            v.name.includes('Google') || 
+            v.name.includes('Natural') || 
+            v.name.includes('Premium') ||
+            v.name.includes('Katja') ||
+            v.name.includes('Conrad') ||
+            v.name.includes('Marlene') ||
+            v.name.includes('Siri') ||
+            v.name.includes('Clara') ||
+            v.name.includes('Viktor')
+        ) || germanVoices[0];
+    }
+}
 
-    setTimeout(() => {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'de-DE';
-        utterance.rate = 0.85;
-
-        const voices = window.speechSynthesis.getVoices();
-        const naturalVoice = voices.find(v => 
-            v.lang.startsWith('de') && 
-            (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Siri') || v.name.includes('Clara') || v.name.includes('Viktor'))
-        );
-
-        if (naturalVoice) {
-            utterance.voice = naturalVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-    }, 50);
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = initGermanVoice;
+    initGermanVoice();
 }
 
 function playCurrentAudio(v1, v2, v3) {
-    let textToSpeak = `${v1}, ${v2}, ${v3}`.replace(/[∙.]/g, '').replace(/\//g, ', '); 
+    if (!('speechSynthesis' in window)) return;
 
-    if (currentAudioInstance) {
-        currentAudioInstance.pause();
-        currentAudioInstance = null;
+    window.speechSynthesis.cancel();
+
+    // Формируем текст с паузами между формами
+    let textToSpeak = `${v1}, ${v2}, ${v3}`.replace(/[∙.]/g, '').replace(/\//g, ', ');
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = 'de-DE';
+
+    if (selectedVoice) {
+        utterance.voice = selectedVoice;
     }
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-    }
 
-    const encodedText = encodeURIComponent(textToSpeak);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=de&client=tw-ob&q=${encodedText}`;
+    utterance.rate = 0.88; // Скорость из Lektionen Trainer A1
+    utterance.pitch = 1.0;
 
-    const audio = new Audio(audioUrl);
-    currentAudioInstance = audio;
-
-    const playPromise = audio.play();
-
-    if (playPromise !== undefined) {
-        playPromise.catch(error => {
-            console.warn("Google TTS недоступен или заблокирован, переключаемся на системную озвучку:", error);
-            fallbackToSpeechSynthesis(textToSpeak);
-        });
-    }
+    window.speechSynthesis.speak(utterance);
 }
 
 function triggerVoice(v1, v2, v3) {
@@ -547,7 +537,6 @@ function nextQuestion(){
             const allButtons = box.querySelectorAll('button');
             allButtons.forEach(btn => btn.style.pointerEvents = 'none');
 
-            // Подставляем правильную форму и её транскрипцию в поле пропуска
             const targetWordEl = document.getElementById("targetForm");
             const targetTransEl = document.getElementById("targetTrans");
             
