@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Глаголы / Дієслова</title>
+
+<style>
+:root{
+    --bg:#4b0082;
+    --container:#4b0082;
+    --text:#fff;
+    --accent:#eccc68;
+    --correct:#2ed573;
+    --incorrect:#ff4757;
+}
+
+body{
+    margin:0;
+    background:var(--bg);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    font-family:Arial, sans-serif;
+}
+
+.container{
+    width:100%;
+    max-width:600px;
+    background:var(--container);
+    padding:25px;
+    border-radius:18px;
+    color:#fff;
+    text-align:center;
+    position: relative;
+}
+
+/* СТИЛИ ДЛЯ КНОПОК ВЫБОРА ЯЗЫКА */
+.lang-screen-box {
+    padding: 20px 0;
+}
+.lang-screen-box label {
+    font-size: 20px;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 25px;
+}
+.btn-lang-choice {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hidden{display:none;}
+
+button{
+    width:100%;
+    padding:16px;
+    margin:10px 0;
+    border:none;
+    border-radius:16px;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    transition: background 0.2s;
+}
+
+.option{
+    background:#fff;
+    color:#000;
+}
+
+.correct{background:var(--correct)!important;color:#fff!important;}
+.incorrect{background:var(--incorrect)!important;color:#fff!important;}
+
+.btn-back {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    margin-top: 30px !important;
+    font-size: 14px;
+    padding: 10px;
+}
+.btn-back:hover {
+    color: #fff;
+    border-color: #fff;
+}
+
+.study-box, .practice-box {
+    margin: 20px 0 0 0;
+}
+
+.verb-form {
+    display: inline-block;
+    margin: 0 10px 10px 10px;
+    vertical-align: top;
+}
+
+.verb-label {
+    font-size: 16px; 
+    color: var(--accent);
+    display: block;
+    margin-bottom: 12px; 
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.main-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    display: block;
+}
+
+.transcription {
+    font-size: 13px;
+    font-weight: normal;
+    color: #fff;
+    display: block;
+    margin-top: 4px;
+}
+
+.btn-speak {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin: 5px auto 15px auto !important;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px !important;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+.btn-speak:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.missing-form {
+    color: var(--accent); 
+    border-bottom: 2px dashed var(--accent);
+    padding: 0 5px;
+}
+
+/* СЧЕТЧИК ЗВЕЗДОЧКИ */
+.score-badge {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 15px;
+}
+
+.score-number {
+    font-size: 26px;
+    font-weight: bold;
+    color: #ffffff;
+    line-height: 1;
+}
+
+.score-star {
+    font-size: 26px;
+    color: #ffca28; 
+    line-height: 1;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div id="langScreen" class="lang-screen-box">
+        <label id="langTitle">Выберите язык / Оберіть мову</label>
+        
+        <button id="btnLangRu" class="btn-lang-choice" onclick="loadDatabaseAndConfirm('rus')">Русский</button>
+        <button id="btnLangUk" class="btn-lang-choice" onclick="loadDatabaseAndConfirm('ukr')">Українська</button>
+    </div>
+
+    <div id="menu" class="hidden">
+        <button id="btnMenuStudy" onclick="startStudy()">Изучение</button>
+        <button id="btnMenuPractice" onclick="startPractice()">Практика</button>
+    </div>
+
+    <div id="study" class="hidden">
+        <div id="studyText" class="study-box"></div>
+        
+        <button onclick="speakStudy()" class="btn-speak">🔊</button>
+        
+        <button id="btnStudyNext" onclick="nextStudy()">Дальше</button>
+        <button id="btnStudyBack" onclick="backToMenu()" class="btn-back">⬅ Назад в меню</button>
+    </div>
+
+    <div id="practice" class="hidden">
+        <div class="score-badge">
+            <span id="liveScore" class="score-number">0</span>
+            <span class="score-star">★</span>
+        </div>
+
+        <div id="practiceText" class="practice-box"></div>
+        
+        <button onclick="speakPractice()" class="btn-speak">🔊</button>
+        
+        <div id="answers"></div>
+        <button id="btnPracticeBack" onclick="backToMenu()" class="btn-back">⬅ Назад в меню</button>
+    </div>
+
+</div>
+
+<script>
+/* ===== ЯЗЫКОВОЙ ПАКЕТ ИНТЕРФЕЙСА ===== */
+let currentLang = "rus";
+
+const translations = {
+    rus: {
+        study: "Изучение",
+        practice: "Практика",
+        next: "Дальше",
+        back: "⬅ Назад в меню",
+        translationLabel: "Перевод",
+        statusReady: "Готово",
+        resultLabel: "Результат",
+        points: "очков из"
+    },
+    ukr: {
+        study: "Вивчення",
+        practice: "Практика",
+        next: "Далі",
+        back: "⬅ Назад до меню",
+        translationLabel: "Переклад",
+        statusReady: "Готово",
+        resultLabel: "Результат",
+        points: "балів з"
+    }
+};
+
+// Динамическое подключение выбранного js-файла базы данных
+function loadDatabaseAndConfirm(lang) {
+    currentLang = lang;
+    
+    // Удаляем предыдущий скрипт, если он был подключен, чтобы не дублировать память
+    const oldScript = document.getElementById("verbsDbScript");
+    if (oldScript) oldScript.remove();
+
+    // Создаем элемент скрипта для загрузки нужного файла
+    const script = document.createElement("script");
+    script.id = "verbsDbScript";
+    script.src = `verbs_${lang}.js`; // Сюда подставится verbs_rus.js или verbs_ukr.js
+    
+    // Переходим в меню сразу после успешного импорта базы
+    script.onload = function() {
+        updateInterfaceTexts();
+        show("menu");
+    };
+    
+    script.onerror = function() {
+        alert("Ошибка загрузки базы данных! Проверьте наличие файла " + script.src);
+    };
+
+    document.body.appendChild(script);
+}
+
+function updateInterfaceTexts() {
+    const t = translations[currentLang];
+    document.getElementById("btnMenuStudy").innerText = t.study;
+    document.getElementById("btnMenuPractice").innerText = t.practice;
+    document.getElementById("btnStudyNext").innerText = t.next;
+    document.getElementById("btnStudyBack").innerText = t.back;
+    document.getElementById("btnPracticeBack").innerText = t.back;
+}
+
+/* ===== НАВИГАЦИЯ МЕЖДУ ЭКРАНАМИ ===== */
+function show(id){
+    document.getElementById("langScreen").classList.add("hidden");
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("study").classList.add("hidden");
+    document.getElementById("practice").classList.add("hidden");
+    document.getElementById(id).classList.remove("hidden");
+}
+
+function backToMenu() {
+    speechSynthesis.cancel();
+    show("menu");
+}
+
+/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (ГЕРМАНИЯ) ===== */
+function triggerVoice(v1, v2, v3) {
+    speechSynthesis.cancel();
+    const cleanV2 = v2.replace('/', ', ');
+    const cleanV3 = v3.replace('/', ', ');
+    const u = new SpeechSynthesisUtterance(`${v1}, ${cleanV2}, ${cleanV3}`);
+    u.lang = "de-DE";
+    speechSynthesis.speak(u);
+}
+
+/* ===== РЕЖИМ: ИЗУЧЕНИЕ ===== */
+let studyIndex=0;
+let shuffledStudyVerbs = [];
+
+function startStudy(){
+    show("study");
+    studyIndex=0;
+    
+    shuffledStudyVerbs = [...verbsDatabase];
+    for (let i = shuffledStudyVerbs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledStudyVerbs[i], shuffledStudyVerbs[j]] = [shuffledStudyVerbs[j], shuffledStudyVerbs[i]];
+    }
+    
+    showStudy();
+}
+
+function showStudy(){
+    const v=shuffledStudyVerbs[studyIndex];
+    const t = translations[currentLang];
+
+    document.getElementById("studyText").innerHTML = `
+        <div style="margin-bottom: 10px;">
+            <div class="verb-form">
+                <span class="verb-label">Infinitiv</span>
+                <span class="main-text">${v.v1}</span>
+                <span class="transcription">${v.t1}</span>
+            </div>
+            <div class="verb-form">
+                <span class="verb-label">Präteritum</span>
+                <span class="main-text">${v.v2}</span>
+                <span class="transcription">${v.t2}</span>
+            </div>
+            <div class="verb-form">
+                <span class="verb-label">Partizip II</span>
+                <span class="main-text">${v.v3}</span>
+                <span class="transcription">${v.t3}</span>
+            </div>
+        </div>
+        <div>
+            <div class="verb-form"><span class="verb-label">${t.translationLabel}</span><span class="main-text">${v.translation}</span></div>
+        </div>
+    `;
+    triggerVoice(v.v1, v.v2, v.v3);
+}
+
+function nextStudy(){
+    studyIndex++;
+    if(studyIndex>=shuffledStudyVerbs.length) studyIndex=0;
+    showStudy();
+}
+
+function speakStudy(){
+    const v=shuffledStudyVerbs[studyIndex];
+    triggerVoice(v.v1, v.v2, v.v3);
+}
+
+/* ===== РЕЖИМ: ПРАКТИКА ===== */
+let practiceIndex=0;
+let score=0;
+let shuffledVerbs = [];
+let correctAnswer = "";
+
+function startPractice(){
+    show("practice");
+    practiceIndex=0;
+    score=0;
+    document.getElementById("liveScore").innerText = score;
+    
+    shuffledVerbs = [...verbsDatabase];
+    for (let i = shuffledVerbs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledVerbs[i], shuffledVerbs[j]] = [shuffledVerbs[j], shuffledVerbs[i]];
+    }
+    nextQuestion();
+}
+
+function generateFakeOptions(correct, type, baseVerb) {
+    let fakes = new Set();
+    let primary = correct.split('/')[0].trim();
+
+    if (type === "v1") {
+        if (primary.endsWith("en")) {
+            fakes.add(primary.slice(0, -2) + "et");
+            fakes.add(primary.slice(0, -2) + "st");
+        } else if (primary.endsWith("n")) {
+            fakes.add(primary.slice(0, -1) + "t");
+            fakes.add(primary.slice(0, -1) + "st");
+        }
+    } 
+    else if (type === "v2") {
+        if (!primary.endsWith("te")) {
+            fakes.add(baseVerb.v1.slice(0, -2) + "te");
+            fakes.add(baseVerb.v1.slice(0, -2) + "ete");
+        }
+        fakes.add(primary + "st");
+        let vowels = ["a", "o", "i", "u", "ie"];
+        vowels.forEach(v => {
+            let replaced = primary.replace(/[aeiouäöü]+/g, v);
+            if (replaced !== primary) fakes.add(replaced);
+        });
+    } 
+    else if (type === "v3") {
+        if (primary.endsWith("en")) {
+            fakes.add(primary.slice(0, -2) + "t");
+            fakes.add(primary.slice(0, -2) + "et");
+        } else if (primary.endsWith("t")) {
+            fakes.add(primary.slice(0, -1) + "en");
+        }
+        if (primary.startsWith("ge")) {
+            fakes.add(primary.substring(2));
+        } else {
+            fakes.add("ge" + primary);
+        }
+    }
+
+    fakes.delete(correct);
+    fakes.delete(primary);
+
+    let arrayFakes = Array.from(fakes).filter(item => item.length > 0);
+
+    while (arrayFakes.length < 2) {
+        let fake = primary + (arrayFakes.length === 0 ? "t" : "st");
+        if (fake !== primary && !arrayFakes.includes(fake)) {
+            arrayFakes.push(fake);
+        }
+    }
+
+    return arrayFakes.slice(0, 2);
+}
+
+function nextQuestion(){
+    const box = document.getElementById("answers");
+    const speakBtn = document.querySelector("#practice .btn-speak");
+    const badge = document.querySelector(".score-badge");
+    const t = translations[currentLang];
+
+    if(practiceIndex >= shuffledVerbs.length){
+        const maxScore = shuffledVerbs.length * 2;
+        if(badge) badge.style.display = "none";
+        document.getElementById("practiceText").innerHTML = `
+            <div class="verb-form"><span class="verb-label">${t.resultLabel}</span><span class="main-text">${t.statusReady}</span></div><br>
+            <div class="verb-form"><span class="verb-label">${t.resultLabel}</span><span class="main-text">${score} ${t.points} ${maxScore}</span></div>
+        `;
+        box.innerHTML = "";
+        if(speakBtn) speakBtn.style.display = "none";
+        return;
+    }
+    
+    if(badge) badge.style.display = "flex";
+    if(speakBtn) speakBtn.style.display = "flex";
+
+    const q = shuffledVerbs[practiceIndex];
+    const hiddenFormType = Math.floor(Math.random() * 3);
+    
+    let inf = `<span class="main-text">${q.v1}</span><span class="transcription">${q.t1}</span>`;
+    let v2 = `<span class="main-text">${q.v2}</span><span class="transcription">${q.t2}</span>`;
+    let p2 = `<span class="main-text">${q.v3}</span><span class="transcription">${q.t3}</span>`;
+    let wrongType = "v2";
+
+    if(hiddenFormType === 0) {
+        inf = `<span id="targetForm" class="main-text missing-form">Infinitiv</span><span id="targetTrans" class="transcription">[...]</span>`;
+        correctAnswer = q.v1;
+        wrongType = "v1";
+    } else if(hiddenFormType === 1) {
+        v2 = `<span id="targetForm" class="main-text missing-form">Präteritum</span><span id="targetTrans" class="transcription">[...]</span>`;
+        correctAnswer = q.v2;
+        wrongType = "v2";
+    } else {
+        p2 = `<span id="targetForm" class="main-text missing-form">Partizip II</span><span id="targetTrans" class="transcription">[...]</span>`;
+        correctAnswer = q.v3;
+        wrongType = "v3";
+    }
+
+    document.getElementById("practiceText").innerHTML = `
+        <div style="margin-bottom: 10px;">
+            <div class="verb-form"><span class="verb-label">Infinitiv</span>${inf}</div>
+            <div class="verb-form"><span class="verb-label">Präteritum</span>${v2}</div>
+            <div class="verb-form"><span class="verb-label">Partizip II</span>${p2}</div>
+        </div>
+        <div>
+            <div class="verb-form"><span class="verb-label">${t.translationLabel}</span><span class="main-text">${q.translation}</span></div>
+        </div>
+    `;
+
+    let wrongOptions = generateFakeOptions(correctAnswer, wrongType, q);
+    const options = [correctAnswer, ...wrongOptions].sort(() => Math.random() - 0.5);
+    box.innerHTML = "";
+
+    options.forEach(o => {
+        const b = document.createElement("button");
+        b.className = "option";
+        b.innerText = o;
+
+        b.onclick = () => {
+            const allButtons = box.querySelectorAll('button');
+            allButtons.forEach(btn => btn.style.pointerEvents = 'none');
+
+            // Подставляем правильную форму и её транскрипцию в поле пропуска
+            const targetWordEl = document.getElementById("targetForm");
+            const targetTransEl = document.getElementById("targetTrans");
+            
+            if (targetWordEl && targetTransEl) {
+                targetWordEl.innerText = correctAnswer;
+                targetWordEl.classList.remove("missing-form");
+                
+                if (hiddenFormType === 0) targetTransEl.innerText = q.t1;
+                else if (hiddenFormType === 1) targetTransEl.innerText = q.t2;
+                else targetTransEl.innerText = q.t3;
+            }
+
+            if(o === correctAnswer) {
+                b.classList.add("correct");
+                score += 2;
+                document.getElementById("liveScore").innerText = score;
+            } else {
+                b.classList.add("incorrect");
+                allButtons.forEach(btn => {
+                    if(btn.innerText === correctAnswer) btn.classList.add("correct");
+                });
+            }
+
+            triggerVoice(q.v1, q.v2, q.v3);
+
+            setTimeout(() => {
+                practiceIndex++;
+                nextQuestion();
+            }, 2500);
+        };
+
+        box.appendChild(b);
+    });
+}
+
+function speakPractice(){
+    const q = shuffledVerbs[practiceIndex];
+    triggerVoice(q.v1, q.v2, q.v3);
+}
+</script>
+
+</body>
+</html>
