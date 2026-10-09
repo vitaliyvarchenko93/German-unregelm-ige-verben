@@ -292,13 +292,14 @@ function backToMenu() {
     show("menu");
 }
 
-/* ===== СИСТЕМА ОЗВУЧКИ GOOGLE TTS + FALLBACK ===== */
+/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (GOOGLE TTS + FALLBACK) ===== */
 let currentAudioInstance = null;
 
 function fallbackToSpeechSynthesis(text) {
     if (!('speechSynthesis' in window)) return;
 
     setTimeout(() => {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'de-DE';
         utterance.rate = 0.85;
@@ -318,7 +319,7 @@ function fallbackToSpeechSynthesis(text) {
 }
 
 function playCurrentAudio(v1, v2, v3) {
-    let textToSpeak = `${v1}, ${v2}, ${v3}`.replace(/[∙.]/g, '').replace(/\//g, ','); 
+    let textToSpeak = `${v1}, ${v2}, ${v3}`.replace(/[∙.]/g, '').replace(/\//g, ', '); 
 
     if (currentAudioInstance) {
         currentAudioInstance.pause();
