@@ -282,18 +282,60 @@ function show(id){
 }
 
 function backToMenu() {
-    speechSynthesis.cancel();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
     show("menu");
 }
 
-/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (ГЕРМАНИЯ) ===== */
+/* ===== СИСТЕМА ОЗВУЧКИ СЛОВ (ИЗ LEKTIONEN TRAINER A1) ===== */
+let selectedVoice = null;
+
+function initGermanVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    const germanVoices = voices.filter(v => v.lang.startsWith('de'));
+    
+    if (germanVoices.length > 0) {
+        selectedVoice = germanVoices.find(v => 
+            v.name.includes('Google') || 
+            v.name.includes('Natural') || 
+            v.name.includes('Premium') ||
+            v.name.includes('Online') ||
+            v.name.includes('Katja') ||
+            v.name.includes('Conrad') ||
+            v.name.includes('Marlene') ||
+            v.name.includes('Siri') ||
+            v.name.includes('Clara') ||
+            v.name.includes('Viktor')
+        ) || germanVoices[0];
+    }
+}
+
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = initGermanVoice;
+    initGermanVoice();
+}
+
+function speakGermanText(text) {
+    if (!('speechSynthesis' in window) || !text) return;
+
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/\//g, ', ');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'de-DE';
+
+    if (selectedVoice) {
+        utterance.voice = selectedVoice;
+    }
+
+    utterance.rate = 0.88;
+    utterance.pitch = 1.0;
+
+    window.speechSynthesis.speak(utterance);
+}
+
 function triggerVoice(v1, v2, v3) {
-    speechSynthesis.cancel();
-    const cleanV2 = v2.replace('/', ', ');
-    const cleanV3 = v3.replace('/', ', ');
-    const u = new SpeechSynthesisUtterance(`${v1}, ${cleanV2}, ${cleanV3}`);
-    u.lang = "de-DE";
-    speechSynthesis.speak(u);
+    speakGermanText(`${v1}, ${v2}, ${v3}`);
 }
 
 /* ===== РЕЖИМ: ИЗУЧЕНИЕ ===== */
